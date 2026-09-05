@@ -1,0 +1,240 @@
+name: Build Portable Release
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: 'pyproject.toml'
+
+      - name: Set up Node.js (LTS)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: 'talemate_frontend/package.json'
+          run_install: false
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Build frontend
+        run: |
+          cd talemate_frontend
+          pnpm install --frozen-lockfile
+          pnpm build
+        shell: bash
+
+      - name: Install Python dependencies
+        run: |
+          uv venv
+          uv sync --extra dev
+        shell: bash
+
+      - name: Build portable executable
+        run: |
+          uv run python packaging/build-portable.py --mode onefile
+        shell: bash
+
+      - name: Package portable archive
+        run: |
+          $ver = "${{ github.ref_name }}".Replace('/', '-')
+          "VER=$ver" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Compress-Archive -Path dist\Talemate-Desktop.exe, config.example.yaml, README.md -DestinationPath "dist\Talemate-Desktop-$ver-windows-x64.zip"
+        shell: pwsh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Talemate-Desktop-${{ env.VER }}-windows-x64
+          path: dist/Talemate-Desktop-*-windows-x64.zip
+
+      - name: Upload to Release
+        if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/Talemate-Desktop-*-windows-x64.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ---------------------------------------------------------------------------
+  # Linux (x86_64) Portable Build (WebKitGTK)
+  # ---------------------------------------------------------------------------
+  build-linux:
+    name: Linux x86_64 Portable
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system WebKitGTK and GObject dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libwebkit2gtk-4.1-dev libgirepository1.0-dev libcairo2-dev gir1.2-webkit2-4.1 gir1.2-gtk-3.0 python3-gi python3-gi-cairo
+        shell: bash
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: 'pyproject.toml'
+
+      - name: Set up Node.js (LTS)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: 'talemate_frontend/package.json'
+          run_install: false
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Build frontend
+        run: |
+          cd talemate_frontend
+          pnpm install --frozen-lockfile
+          pnpm build
+        shell: bash
+
+      - name: Install Python dependencies
+        run: |
+          uv venv
+          uv sync --extra dev
+          uv pip install "PyGObject<3.52"
+        shell: bash
+
+      - name: Build portable binary
+        run: |
+          uv run python packaging/build-portable.py --mode onefile
+        shell: bash
+
+      - name: Package Linux archive
+        run: |
+          chmod +x dist/Talemate-Desktop
+          cp config.example.yaml dist/
+          cp README.md dist/
+          ver=$(echo "${{ github.ref_name }}" | tr '/' '-')
+          echo "VER=$ver" >> $GITHUB_ENV
+          tar -czvf "dist/Talemate-Desktop-$ver-linux-x86_64.tar.gz" -C dist Talemate-Desktop config.example.yaml README.md
+        shell: bash
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Talemate-Desktop-${{ env.VER }}-linux-x86_64
+          path: dist/Talemate-Desktop-*-linux-x86_64.tar.gz
+
+      - name: Upload to Release
+        if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/Talemate-Desktop-*-linux-x86_64.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ---------------------------------------------------------------------------
+  # macOS (Apple Silicon arm64) Portable Build (.app bundle)
+  # ---------------------------------------------------------------------------
+  build-macos:
+    name: macOS arm64 Portable
+    runs-on: macos-latest
+    env:
+      UV_NO_SOURCES: "true"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: 'pyproject.toml'
+
+      - name: Set up Node.js (LTS)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: 'talemate_frontend/package.json'
+          run_install: false
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Build frontend
+        run: |
+          cd talemate_frontend
+          pnpm install --frozen-lockfile
+          pnpm build
+        shell: bash
+
+      - name: Install Python dependencies
+        run: |
+          uv venv
+          uv sync --extra dev --no-sources
+          uv pip install pyobjc-framework-Cocoa pyobjc-framework-WebKit
+        shell: bash
+
+      - name: Generate macOS app icon
+        run: |
+          if [ -f talemate.ico ]; then
+            sips -s format icns talemate.ico --out talemate.icns || true
+          fi
+        shell: bash
+
+      - name: Build portable binary
+        run: |
+          uv run --no-sync python packaging/build-portable.py --mode onefile
+        shell: bash
+
+      - name: Package macOS archive
+        run: |
+          ver=$(echo "${{ github.ref_name }}" | tr '/' '-')
+          echo "VER=$ver" >> $GITHUB_ENV
+          mkdir -p dist/package-macos
+          cp -R dist/Talemate-Desktop.app dist/package-macos/
+          cp config.example.yaml dist/package-macos/
+          cp README.md dist/package-macos/
+          ditto -c -k --sequesterRsrc dist/package-macos "dist/Talemate-Desktop-$ver-macos-arm64.zip"
+        shell: bash
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Talemate-Desktop-${{ env.VER }}-macos-arm64
+          path: dist/Talemate-Desktop-*-macos-arm64.zip
+
+      - name: Upload to Release
+        if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/Talemate-Desktop-*-macos-arm64.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

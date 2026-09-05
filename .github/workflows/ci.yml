@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   container-build:
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' && github.repository == 'vegu-ai/talemate'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -56,7 +56,7 @@ jobs:
             ghcr.io/${{ github.repository }}:${{ github.ref_name }}
 
   deploy-docs:
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' && github.repository == 'vegu-ai/talemate'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -1,3 +1,31 @@
+# Talemate Desktop (Portable Edition)
+
+> [!NOTE]
+> **This repository is a fork of [vegu-ai/talemate](https://github.com/vegu-ai/talemate)** dedicated to providing a **zero-install, portable desktop application** with a native GUI window and fully self-contained local storage.
+>
+> 📦 **Download Pre-built Releases**: Download the latest portable package for your platform from the [**Releases**](../../releases) page!
+
+### Key Features of Portable Edition
+
+- **Zero-Install Single Executable**: Run Talemate with a single click. No need to install Python, Node.js, pnpm, C++ build tools, or Git on your machine.
+- **Native Desktop GUI**: Runs inside a dedicated desktop window powered by native WebView (Microsoft Edge WebView2 on Windows, WebKitGTK on Linux, WebKit/Cocoa on macOS). No terminal or external browser required.
+- **100% In-Place Portable Storage**: All user data (`config.yaml`, scenes directory `scenes/`, logs `logs/`, and custom voices `tts/`) are created and stored directly next to the executable. Nothing is written to the registry or system directories.
+- **Lightweight (~90 MB)**: Heavy local PyTorch/ML frameworks (~10 GB) are excluded from the portable bundle. Full support for all remote and local API providers (OpenAI, Anthropic, Gemini, OpenRouter, Mistral, Cohere, Groq, KoboldCpp, LMStudio, Ollama, ElevenLabs, etc.).
+- **Clean Process Lifecycle**: Frontend and backend servers run in-process with graceful shutdown upon closing the desktop window — zero background zombie processes.
+
+### Platform Support & Call for Contributors
+
+| Platform | Status | Details |
+|---|---|---|
+| **Windows (x64)** | **Tested & Working** | Native Edge WebView2, single-file `Talemate-Desktop.exe` |
+| **Linux (x86_64)** | *CI Built / Testing Wanted* | Native WebKitGTK, single-file portable `Talemate-Desktop` |
+| **macOS (Apple Silicon)** | *CI Built / Testing Wanted* | Native Cocoa / WKWebView, portable `.app` bundle |
+
+> [!TIP]
+> **Contributors & Testers Welcome**: Portable builds for Linux and macOS are experimental and have not been tested. If you are on Linux or macOS, please help test the packaging workflows and submit PRs or feedback!
+
+---
+
 # Talemate
 
 Roleplay with AI with a focus on strong narration and consistent world and game state tracking.
